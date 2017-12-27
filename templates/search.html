@@ -1,0 +1,184 @@
+<div ng-init="searchSubmit()">
+<div class="row">
+   <div class="facets col-md-2 col-sm-2 col-xs-12">
+      <div class="browse-options">
+         <div class="clear-search"><a href="http://www.cimmyt.org/"><img width="100%" src="img/logo.svg"/></a></div>
+      </div>
+      <div id="facets">
+         <div ng-if="!searchLoading"  ng-show="items.length != 0" class="panel panel-default">
+            <div class="panel-heading">
+               <a data-toggle="collapse" href="/#collapsePrimaryTypes">
+                  <h4 class="panel-title pull-left">
+                     Search for:
+                  </h4>
+                  <div class="clearfix"></div>
+               </a>
+            </div>
+            <div id="collapsePrimaryTypes" class="panel-collapse collapse in">
+               <div class="facet-check">
+                  <input type="checkbox" value="primaryTypes" id="primaryTypes0" ng-checked="types.publications" ng-model="types.publications" ng-change="unsetAll()" class="ng-pristine ng-untouched ng-valid ng-empty">
+                  <label for="primaryTypes0" class="facet-value">
+                     <div class="label-value">Publications</div>
+                  </label>
+               </div>
+               <div class="facet-check">
+                  <input type="checkbox" value="primaryTypes" id="primaryTypes1" ng-checked="types.photographs" ng-model="types.photographs" ng-change="unsetAll()" class="ng-pristine ng-untouched ng-valid ng-empty">
+                  <label for="primaryTypes1" class="facet-value">
+                     <div class="label-value">Photographs</div>
+                  </label>
+               </div>
+               <div class="facet-check">
+                  <input type="checkbox" value="primaryTypes" id="primaryTypes2" ng-checked="types.videos" ng-model="types.videos" ng-change="unsetAll()" class="ng-pristine ng-untouched ng-valid ng-empty">
+                  <label for="primaryTypes2" class="facet-value">
+                     <div class="label-value">Videos</div>
+                  </label>
+               </div>
+               <div class="facet-check">
+                  <input type="checkbox" value="primaryTypes" id="primaryTypes3" ng-checked="types.datasets" ng-model="types.datasets" ng-change="unsetAll()" class="ng-pristine ng-untouched ng-valid ng-empty">
+                  <label for="primaryTypes3" class="facet-value">
+                     <div class="label-value">Datasets</div>
+                  </label>
+               </div>
+               <a class="date-submit" ng-click="startSearch()">Apply</a>
+            </div>
+         </div>
+         <div ng-if="!searchLoading"  ng-show="items.length != 0" class="panel panel-default">
+            <div class="panel-heading">
+               <a data-toggle="collapse" href="/#collapseDate">
+                  <h4 class="panel-title pull-left">
+                     Date
+                  </h4>
+                  <div class="clearfix"></div>
+               </a>
+            </div>
+            <div id="collapseDate" class="panel-collapse collapse in">
+               <rzslider rz-slider-model="slider.minValue"
+                  rz-slider-high="slider.maxValue"
+                  rz-slider-options="slider.options" class="date-slider"></rzslider>
+               <a class="date-submit" ng-click="searchSubmit()">Apply</a>
+            </div>
+         </div>
+         <div ng-if="!searchLoading" class="panel panel-default" ng-show="facet.facet_name=='types' || facet.facet_name=='authors' || facet.facet_name=='langs' || facet.facet_name=='subjects' || facet.facet_name=='locations'" ng-repeat="facet in facetData track by $index">
+            <div class="panel-heading">
+               <a data-toggle="collapse" href="/#collapse{{$index}}">
+                  <h4 class="panel-title pull-left">
+                     {{facet.facet_name | facetRename}} 
+                  </h4>
+                  <div class="clearfix"></div>
+               </a>
+            </div>
+            <div id="collapse{{$index}}" class="panel-collapse collapse facet-{{facet.facet_name}}" ng-class="{'in':facet.results.length >0}"  ng-scrollbars ng-scrollbars-config="config">
+               <ul class="list-group">
+                  <li class="list-group-item" ng-repeat="facet_result in facet.results track by $index">
+                     <div class="facet-check">
+                        <input type="checkbox" ng-change="searchSubmit()" value="{{facet.facet_name}}" id="{{facet.facet_name}}{{$index}}" ng-checked="selectedFacets[facet.facet_name][facet_result.value]" ng-model="selectedFacets[facet.facet_name][facet_result.value]"/> 
+                        <label for="{{facet.facet_name}}{{$index}}" class="facet-value">
+                           <div class="label-value">{{facet_result.value | facetValueLookup:this }}<span ng-show="facet.facet_name=='subjects'">({{facet_result.count}})</span></div>
+                        </label>
+                     </div>
+                  </li>
+               </ul>
+            </div>
+         </div>
+      </div>
+   </div>
+   <div class="col-md-10 col-sm-10 col-xs-12">
+      <div class="row">
+         <div class="search-options search-page col-md-12">
+            <form class="form-inline" ng-submit="searchSubmit()">
+               <div class="form-group search-field">
+                  <input type="text" class="input" placeholder="" ng-model="$root.query"/>
+                  <button class="btn btn-default" type="submit">SEARCH</button>
+                  <a href="#!/" class="btn btn-default clear-search-btn"><i class="glyphicon glyphicon-home"></i></a>
+               </div>
+            </form>
+            <span ng-if="total !== undefined" ng-show="items.length != 0" class="total-results">Displaying <b>{{(currentPage*10)+1}}-{{(currentPage*10)+10}}</b> from a total of <b>{{total | number}} resources</b>.</span>
+            <br/>
+            <div ng-if="!searchLoading" class="pagination-options1 text-center">
+               <ul ng-if="pages.length" class="pagination pagination-default">
+                  <li ng-class="{disabled:currentPage == 0}">
+                     <a href="search/{{token}}/0?{{currentUrlParams}}">First</a>
+                  </li>
+                  <li ng-class="{disabled:currentPage + 1 == 1}">
+                     <a href="search/{{token}}/{{currentPage - 1}}?{{currentUrlParams}}">Previous</a>
+                  </li>
+                  <li ng-repeat="page in pages track by $index" ng-class="{active:currentPage == $index}" ng-show="$index < parseInt(currentPage)+3 && $index > parseInt(currentPage) -3">
+                     <a href="search/{{token}}/{{$index}}?{{currentUrlParams}}">{{$index+1}}</a>
+                  </li>
+                  <li ng-class="{disabled:currentPage == pages.length - 1}">
+                     <a href="search/{{token}}/{{parseInt(currentPage)+1}}?{{currentUrlParams}}">Next</a>
+                  </li>
+                  <li ng-class="{disabled:currentPage == pages.length - 1}">
+                     <a href="search/{{token}}/{{pages.length - 1}}?{{currentUrlParams}}">Last</a>
+                  </li>
+               </ul>
+            </div>
+         </div>
+      </div>
+      <br/>
+      <div ng-show={{error}} class="alert alert-danger">
+         <strong>Error!</strong> Could not retrieve data from the server.
+      </div>
+      <div ng-if="searchLoading" id="loader">
+         <div class="ball-scale-ripple-multiple">
+            <div></div>
+            <div></div>
+            <div></div>
+         </div>
+      </div>
+      <div class="results animate-bottom" ng-if="!searchLoading">
+         <div class="no-results" ng-show="items.length == 0">
+            <h4>No results were found. Please make sure to:</h4>
+            <ul>
+               <li>Check your spelling.</li>
+               <li>Type other keywords.</li>
+               <li>De-activate some facets.</li>
+            </ul>
+         </div>
+         <div class="media result" ng-repeat="obj in items">
+            <div class="media-left">
+               <img class="resource-thumb" ng-if="obj.detailed.type != 'Video' && obj.detailed.type != 'Dataset' && obj.detailed != 'Database'" src="{{getThumb(obj.detailed.aggregation.shownBy)}}"/>
+               <img class="resource-thumb" ng-if="obj.detailed.type == 'Video' || obj.detailed.type == 'Dataset' || obj.detailed == 'Database'" src="/cimmyt/img/file_empty.png"/>
+               <div class="resource-type">
+                  <a href="#" disabled title="{{obj.detailed.type | typeCardinalityCheck}}" data-toggle="tooltip" data-placement="top" tooltip><img src="img/{{obj.detailed.type | typeResolve}}.svg"/></a>
+               </div>
+               <div class="resource-open-access"><a href="#" disabled title="Open Access" data-toggle="tooltip" data-placement="top" tooltip><img src="img/open_access.png"/></a></div>
+            </div>
+            <div class="media-body">
+               <a href="#" ng-click="redirect(obj.appid)">
+                  <h4 class="media-heading">{{obj.title | titleCardinalityCheck}}</h4>
+               </a>
+               <div class="result-description">
+                  <p class="result-authors"><span ng-if="obj.detailed.creator.length" ng-repeat="author in obj.detailed.creator | limitTo:5">{{author.value | normalize}}{{$last ? '' : ', '}}</span>
+                     <span ng-if="obj.detailed.creator.value">{{obj.detailed.creator.value}}</span>
+                  </p>
+                  <p>{{ obj.description.value | cut:true:500 }}</p>
+                  <display-tag center="{{obj.center}}" date="{{obj.date}}"/>
+               </div>
+               <div class="result-keywords">
+                  <span ng-repeat="subject in obj.subject | limitTo:5"><a class="label label-default" href="search/{{subject.value}}/0?{{currentUrlParams}}">{{subject.value}}</a>{{$last ? '' : '  '}}</span>
+               </div>
+            </div>
+         </div>
+      </div>
+      <div ng-if="!searchLoading" class="pagination-options1 text-center">
+         <ul ng-if="pages.length" class="pagination pagination-default">
+            <li ng-class="{disabled:currentPage == 0}">
+               <a href="search/{{token}}/0?{{currentUrlParams}}">First</a>
+            </li>
+            <li ng-class="{disabled:currentPage + 1 == 1}">
+               <a href="search/{{token}}/{{currentPage - 1}}?{{currentUrlParams}}">Previous</a>
+            </li>
+            <li ng-repeat="page in pages track by $index" ng-class="{active:currentPage == $index}" ng-show="$index < parseInt(currentPage)+3 && $index > parseInt(currentPage) -3">
+               <a href="search/{{token}}/{{$index}}?{{currentUrlParams}}">{{$index+1}}</a>
+            </li>
+            <li ng-class="{disabled:currentPage == pages.length - 1}">
+               <a href="search/{{token}}/{{parseInt(currentPage)+1}}?{{currentUrlParams}}">Next</a>
+            </li>
+            <li ng-class="{disabled:currentPage == pages.length - 1}">
+               <a href="search/{{token}}/{{pages.length - 1}}?{{currentUrlParams}}">Last</a>
+            </li>
+         </ul>
+      </div>
+   </div>
+</div>

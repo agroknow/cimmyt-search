@@ -1,0 +1,834 @@
+angular.module('HashBangURLs', []).config(['$locationProvider', function($location) {
+  $location.hashPrefix('!');
+}]);
+angular.module("agrisDataApp", ['ngRoute','uiSwitch', 'angucomplete-alt','angularModalService','ngMeta'])
+        .config(['$routeProvider','$locationProvider',
+            function($routeProvider, $locationProvider) {
+                $routeProvider.when('/search',
+                {
+                    controller:'searchController',
+                    templateUrl: 'templates/search.html'
+                })
+                .when('/search/:searchParam',
+                {
+                    controller:'searchController',
+                    templateUrl: 'templates/search.html'
+                })
+                .when('/search/:searchParam/:pageParam',
+                {
+                    controller:'searchController',
+                    templateUrl: 'templates/search.html'
+                })
+                .when('/item',
+                {
+                    controller:'itemController'
+                })
+                .when('/item/:id',
+                {
+                    controller:'itemController'
+                })
+                .when('/',
+                {
+                    controller:'mainController',
+                    templateUrl: 'templates/bootstrap.html'
+                });
+
+                //$locationProvider.html5Mode(true);
+            }
+        ])
+        .run(['ngMeta', function(ngMeta) { 
+          ngMeta.init();
+        }])
+        .factory('agrisApiCallFactory', function($http) {
+          var factory = {
+          	//(q,$scope.currentPage, $scope.selectedFacets, $scope.facetLimit, $scope.arnQuery, $scope.sortByValues, '')
+
+            getSearchData: function (query, page, facets, limit, arnQuery, typeQuery, sortValues, analyzedFacet, dataType) {
+
+                if (!(Object.keys(facets).length === 0 && facets.constructor === Object)) {
+                    facetParams = '';
+                    for (facet in facets) {
+                    	i=0;
+                        initialized = false;
+                        for (value in facets[facet]) {
+                            if (facets[facet][value]) {
+                                if (!initialized) {
+                                    facetParams += '&fq=('+facet+':\"'+Object.keys(facets[facet])[i]+'\"';
+                                    initialized = true;
+                                }
+                                else {
+                                    facetParams += ' OR \"'+Object.keys(facets[facet])[i]+'\"';
+                                }
+                                
+                            }
+                            i++;
+                        }
+                        facetParams += ')';
+                    }
+                }
+                else {            
+                    facetParams='';
+                }
+                if (sortValues) {
+                	facetSort = '&facet.sort=index';
+                }
+                else {
+                	facetSort = '&facet.count=index';
+                }
+
+                if (query == '*' && arnQuery!=false) {
+                 	query = '*';
+                }
+                majorFacetParameter = '';
+                switch (dataType) {
+                  case "agricola":
+                    majorFacetParameter = ' AND center:"http://ring.ciard.net/node/10972"';
+                    break;
+                  case "active":
+                    majorFacetParameter = ' NOT center:"http://ring.ciard.net/node/10972" AND date:[2013%20TO%20*]';
+                    break;
+                  case "historical":
+                    majorFacetParameter = ' NOT center:"http://ring.ciard.net/node/10972" AND date:[*%20TO%202012]';
+                    break;
+                  default:
+                    majorFacetParameter = '';
+                }
+
+				if ( analyzedFacet != '' ) {
+					fullQuery = "http://83.212.168.41:8080/solr-4.9.1/core1/select?q=("+query+")AND("+majorFacetParameter+arnQuery+typeQuery+")&start="+page+"&wt=json&rows=10&facet=true&facet.limit="+limit+"&facet.field="+analyzedFacet+facetSort+"&stats=true&stats.field="+analyzedFacet;
+				}           
+				else {
+					fullQuery = "http://83.212.168.41:8080/solr-4.9.1/core1/select?q=("+query+")AND("+majorFacetParameter+arnQuery+typeQuery+")&start="+page+"&wt=json&rows=10";
+				}  
+				console.log(fullQuery);   
+                //return $http.get("http://83.212.100.195:8080/agris-1.0/search?&freetext="+query+"&page="+page+"&apikey=agroknow&format=json"+facetParams+"&cache=true")
+print fullQuery;
+                return $http.get(fullQuery)
+                .then(function(response) {
+                   var data = response.data;
+                   return data;
+                }, function(error) {
+                    return 'error';
+                });
+            },
+            getItemData: function (ARN) {
+
+              return $http.get("http://83.212.168.41:8080/solr-4.9.1/core1/select?q=(ARN:%22"+ARN+"%22)&wt=json&indent=true")
+                .then(function(response) {
+                	
+                   var data = response.data.response.docs[0];
+                   return data;
+
+                }, function(error) {
+                    return 'error';
+                });
+            }
+          };
+          return factory;
+        })
+        .factory('PagerService', function() {
+            // service definition
+            var service = {};
+
+            service.GetPager = GetPager;
+
+            return service;
+
+            // service implementation
+            function GetPager(totalItems, currentPage, pageSize) {
+                // default to first page
+                currentPage = currentPage || 1;
+
+                // default page size is 10
+                pageSize = pageSize || 10;
+
+                // calculate total pages
+                var totalPages = Math.ceil(totalItems / pageSize);
+
+                var startPage, endPage;
+                if (totalPages <= 10) {
+                    // less than 10 total pages so show all
+                    startPage = 1;
+                    endPage = totalPages;
+                } else {
+                    // more than 10 total pages so calculate start and end pages
+                    if (currentPage <= 6) {
+                        startPage = 1;
+                        endPage = 10;
+                    } else if (currentPage + 4 >= totalPages) {
+                        startPage = totalPages - 9;
+                        endPage = totalPages;
+                    } else {
+                        startPage = currentPage - 5;
+                        endPage = currentPage + 4;
+                    }
+                }
+
+                // calculate start and end item indexes
+                var startIndex = (currentPage - 1) * pageSize;
+                var endIndex = Math.min(startIndex + pageSize - 1, totalItems - 1);
+
+                // create an array of pages to ng-repeat in the pager control
+                var pages = _.range(startPage, endPage + 1);
+
+                // return object with all pager properties required by the view
+                return {
+                    totalItems: totalItems,
+                    currentPage: currentPage,
+                    pageSize: pageSize,
+                    totalPages: totalPages,
+                    startPage: startPage,
+                    endPage: endPage,
+                    startIndex: startIndex,
+                    endIndex: endIndex,
+                    pages: pages
+                };
+            }
+        })
+        .directive('displayTag', function($parse) {
+        return {
+            restrict: 'E',
+            replace: true,
+            transclude: false,
+            template: '<span class="label label-default label-tag"></span>',
+            link: function (scope, element, attrs, controller) {
+                if (attrs.center == "http://ring.ciard.net/node/10972") {
+                    element.text("AGRICOLA");
+                    element.addClass("agricola");
+                }
+                else {
+                    if (parseInt(attrs.date) <= 2012) {
+                        element.text("AGRIS Historical Data");
+                        element.addClass("agris-historical");
+                    }
+                    else {
+                        element.text("Active AGRIS Network");
+                        element.addClass("agris-active");
+                    }
+                }
+                
+            }
+        }})
+        .filter('facetRename', function() {
+            return function(input) {
+            	if (input == 'date') {
+            		return 'Processing Year';
+            	}
+            	else {
+            		if (input == 'publicationDate') {
+            			return 'Publication Year';
+            		}
+            		else {
+            			if (input == 'type') {
+            				return 'Resource type';
+	            		}
+	            		else {
+	            			return 'Source';
+	            		}
+            		}
+            	}
+            }
+        })
+        .filter('facetValueLookup', function() {
+            return function(input,scope) {
+            	if (input.indexOf('http://ring.ciard.net/node/') != -1) {
+	            	for ( o in scope.ciardCenters) {
+	            		if (input == scope.ciardCenters[o].URI) {
+	            			return scope.ciardCenters[o].CENTERNAME;
+	            		}
+
+	            	}
+            	}
+            	return input;
+            }
+        })
+        .filter('languageCodeLookup', function() {
+            return function(input,scope) {
+
+                    for ( o in scope.languages) {
+                        if (input.toLowerCase() == scope.languages[o]["alpha3-b"]) {
+                            return scope.languages[o].English;
+                        }
+
+                    }
+                return input;
+            }
+        })
+        .filter('capitalize', function() {
+            return function(input) {
+              return (!!input) ? input.charAt(0).toUpperCase() + input.substr(1).toLowerCase() : '';
+            }
+        })
+        .filter('normalize', function() {
+            return function(input) {
+              return input.match(/^[^\(]+/g)[0];
+            }
+        })
+        .filter('cut', function () {
+            return function (value, wordwise, max, tail) {
+                if (!value) return '';
+
+                max = parseInt(max, 10);
+                if (!max) return value;
+                if (value.length <= max) return value;
+
+                value = value.substr(0, max);
+                if (wordwise) {
+                    var lastspace = value.lastIndexOf(' ');
+                    if (lastspace != -1) {
+                      //Also remove . and , so its gives a cleaner result.
+                      if (value.charAt(lastspace-1) == '.' || value.charAt(lastspace-1) == ',') {
+                        lastspace = lastspace - 1;
+                      }
+                      value = value.substr(0, lastspace);
+                    }
+                }
+                return value + " ...";
+            };
+        })
+        .filter('range', function() {
+		  return function(input, min, max) {
+		    min = parseInt(min); //Make string input int
+		    max = parseInt(max);
+		    for (var i=min; i<max; i++)
+		      input.push(i);
+		    return input;
+		  };
+		})
+        .controller("searchController", function( $rootScope, $scope, $location, $routeParams, agrisApiCallFactory, PagerService, ModalService, ngMeta) {
+            $rootScope.selectedFacets = {};
+	    $scope.parseInt = parseInt;
+            $scope.facetLimit = 20;
+            $rootScope.arnQuery = '';
+            $scope.previousYear = parseInt(new Date().getFullYear())-1;
+
+            $scope.showModal = function(facet) {
+            	$rootScope.analyzedFacet = facet;
+		        ModalService.showModal({
+		            templateUrl: 'templates/modal.html',
+		            controller: "ModalController"
+		        }).then(function(modal) {
+		            modal.element.modal();
+		            //console.log(modal.element);
+		            modal.close.then(function(result) {
+		                $scope.message = "You said " + result;
+		            });
+		        });
+		    };
+
+            $scope.sortResults = function(id, event) {
+            	button = angular.element(event.currentTarget);
+            	parentUL = angular.element( document.querySelector( '#collapse'+id+' .list-group' ) );
+            	listElements = parentUL.find('li');
+            	list = [];
+            	for (i=0; i<listElements.length; i++) {
+            		list.push(listElements[i]);
+            		listElements[i].remove();
+            	}
+            	if (button.hasClass("disabled")) {
+            		
+	            	list.sort(function(a, b){
+	            		if (parseInt(a.children[1].textContent) && parseInt(b.children[1].textContent)) {
+	            			return parseInt(a.children[1].textContent , 10) - 
+				               parseInt(b.children[1].textContent , 10);
+	            		}
+	            		else {
+	            			return a.children[1].textContent.toLowerCase() > b.children[1].textContent.toLowerCase();
+	            		}
+				        
+				    });
+	            	
+				    button.removeClass("disabled");
+				    button.addClass("enabled-asc");
+            	}
+            	else {
+            		if (button.hasClass("enabled-asc")) {
+		            	list.sort(function(a, b){
+					        if (parseInt(a.children[1].textContent) && parseInt(b.children[1].textContent)) {
+	            			return parseInt(b.children[1].textContent , 10) - 
+				               parseInt(a.children[1].textContent , 10);
+		            		}
+		            		else {
+		            			return a.children[1].textContent.toLowerCase() < b.children[1].textContent.toLowerCase();
+		            		}
+					    });
+					    button.removeClass("enabled-asc");
+					    button.addClass("enabled-desc");
+
+            		}
+            		else {
+            			list.sort(function(a, b){
+					        return parseInt(b.children[2].textContent , 10) - 
+					               parseInt(a.children[2].textContent , 10);
+					    });
+					    button.removeClass("enabled-desc");
+					    button.addClass("disabled");
+            		}
+            		
+            	}
+            	for(var i = 0; i < list.length; i++) {
+				        parentUL.append(list[i]);
+				    }
+            	
+            }
+
+            $scope.toggleCenterSearch = function() {
+            	$scope.showCenterSearch = !$scope.showCenterSearch;
+            }
+            
+			$scope.activateCenterFacet = function(selected) {
+            	$rootScope.selectedFacets["center"] = JSON.parse('{ "'+selected.originalObject.URI+'": true }');
+            	$location.search("center",selected.originalObject.URI);
+            	$scope.searchSubmit();
+            	facetPanel = angular.element( document.querySelector( '.facet-center' ) );
+            	facetPanel.addClass("in");
+            }
+
+            $scope.populateDates = function() {
+            	min = 1880; 
+				max = parseInt( new Date().getFullYear());
+				$scope.fromYearOptions = [];
+				$scope.toYearOptions = [];
+            	for (var i=min; i<=max; i++) {
+            		if(i >= parseInt($scope.yearFrom)) 
+				      $scope.toYearOptions.push(i);
+					$scope.fromYearOptions.push(i);
+				}
+				//$scope.arnDateSelect();
+            }
+
+            $scope.setSearchParameters = function() {
+                
+            	dateQueryStarted = false;
+            	dateQueryCompleted = false;
+            	
+                // if ($routeParams.fromYear !=undefined) {
+                //     if ($rootScope.selectedYear == undefined) {
+                //         if ($routeParams.fromYear == $rootScope.selectedYear) {
+                //             //select the proper element
+                //             $scope.selectYear(event);
+                //         }
+                //         else {
+                //             alert('common');
+                //             $location.search('fromYear', $rootScope.selectedYear);
+                //         }
+                //     }
+
+                // }
+                // else {
+                //         if ($rootScope.selectedYear == undefined) {
+                //             $rootScope.selectedYear = 'any';
+                //         }
+                //         else {
+                //             $location.search('fromYear', $rootScope.selectedYear);
+                //         }
+                        
+                //     }
+            	//if page arguments are set, activate the respective facets
+            //     if ( JSON.stringify($rootScope.selectedFacets) == JSON.stringify({})) {
+                	
+            //     	for (i in Object.keys($routeParams)) {
+            //     		param = Object.keys($routeParams)[i];
+            //     		if (param != "searchParam" && param != "pageParam" && param != "submittedFrom" && param != "submittedTo" && param != "dataParam") {
+            //     			paramValue = $routeParams[param];
+            //     			if (paramValue.indexOf(",") != -1 ) {
+            //     				values = paramValue.split(",");
+            //     				facets = '{'
+            //     				for (i in values) {
+            //     					facets += '"'+values[i]+'":true,';
+            //     				}
+            //     				facets = facets.substring(0, facets.length - 1) +'}';
+            //     				$rootScope.selectedFacets[param]=JSON.parse(facets);
+            //     			}
+            //     			else {
+            //     				$rootScope.selectedFacets[param] = JSON.parse('{ "'+paramValue+'": true }');
+            // 				}
+        				// }
+	           //      }
+            // 	}
+            // 	else {
+            // 		//if facets are chosen, override search parameters
+            // 		$location.path();
+            // 		for (facet in $rootScope.selectedFacets) {
+            //             i=0;
+            //             deActivated = true;
+            //             params = '';
+            //             for (value in $rootScope.selectedFacets[facet]) {
+            //                 if ($rootScope.selectedFacets[facet][value]) {
+            //                 	deActivated = false;
+            //                 	params += Object.keys($rootScope.selectedFacets[facet])[i]+',';
+            //                 }
+            //                 i++;
+            //             }
+            //             //check if facet has "false" as value
+            //             if (!deActivated) {
+            //             	$location.search(facet,params.substring(0,params.length - 1 ));
+            //             }
+            //             else {
+            //                 	$location.search(facet,null);
+            //             }
+            //         }
+
+                    
+            // 	}
+            // 	dateRangeQuery = false;
+            // 	if ($scope.yearFrom != undefined && $scope.yearTo != undefined) {
+            //     	$location.search('submittedFrom', $scope.yearFrom);
+          		// 	$location.search('submittedTo', $scope.yearTo);
+          		// 	dateRangeQuery=true;
+            //     }
+            //     if ($routeParams.submittedFrom != undefined) {
+            //     	$scope.yearFrom = $routeParams.submittedFrom;
+            // 	}
+            // 	if ($routeParams.submittedTo != undefined) {
+            // 		$scope.yearTo = $routeParams.submittedTo;
+            // 		dateRangeQuery=true;
+            // 	}
+            // 	if(dateRangeQuery) {
+            // 		$scope.arnDateSelect();
+            // 	}
+            }
+
+            $scope.arnDateSelect = function() {
+            	if ($scope.yearFrom <= $scope.yearTo) {
+            		$rootScope.arnQuery = '+ARN:/[A-Z][A-Z](';
+            		for (var i=parseInt($scope.yearFrom); i<=parseInt($scope.yearTo); i++) {
+		      			$rootScope.arnQuery+=i;
+		      			if (i != parseInt($scope.yearTo)) {
+		      				$rootScope.arnQuery += '|';
+		      			}
+            		}
+            		$rootScope.arnQuery += ').*/';
+            		
+                	$rootScope.searchPerformed = true;
+
+            	}	 
+            }
+
+            $scope.isFacetActivated = function(facet) {
+            	for (i in $rootScope.selectedFacets[facet]) {
+                    if ($rootScope.selectedFacets[facet][i]) {
+                    	$rootScope.searchPerformed = true;
+                        return true;
+                    }
+                }
+                return false;
+            }
+
+            $scope.selectYear = function(event) {
+                $rootScope.arnQuery = '';
+                margin = parseInt(event.target.id.replace("#option","")) - 2;
+                options = [];
+
+                for( i=0; i < document.querySelector( '.publication-filter ul' ).children.length; i++) {
+                    options[i] = angular.element( document.querySelector( '.publication-filter ul' ).children[i].children[0] );
+                    if (parseInt(event.target.id.replace("#option","")) -1 != i) {
+                        options[i].removeClass("active");
+                    }
+                    else {
+                        options[i].addClass("active");
+                    }
+                }
+                start = $scope.previousYear - margin;
+                if (start != 2017) {
+                    $rootScope.arnQuery = " AND ";
+                    if (start == 2012) {
+                        $rootScope.selectedYear = 'other';
+                        $rootScope.arnQuery += "NOT ";
+                        start++;
+                    }
+                    else {
+                        $rootScope.selectedYear = start;
+                    }
+                    $rootScope.arnQuery += "publicationDate:(";
+                    for (var i=start; i<=parseInt( new Date().getFullYear()); i++) {
+                        $rootScope.arnQuery+=i;
+                        if (i != parseInt($scope.yearTo)) {
+                            $rootScope.arnQuery += '|';
+                        }
+                    }
+                    $rootScope.arnQuery = $rootScope.arnQuery.substring(0,$rootScope.arnQuery.length - 1 ) +')';
+                    
+                }
+                else {
+                    $rootScope.selectedYear = 'any';
+                }
+                //$location.search('fromYear', $rootScope.selectedYear);
+                $scope.searchSubmit();
+            }
+
+            $scope.selectType = function(option) {
+                option1 = angular.element( document.querySelector( '.resource-type-filter ul' ).children[0].children[0] );
+                option2 = angular.element( document.querySelector( '.resource-type-filter ul' ).children[1].children[0] );
+                option3 = angular.element( document.querySelector( '.resource-type-filter ul' ).children[2].children[0] );
+                option4 = angular.element( document.querySelector( '.resource-type-filter ul' ).children[3].children[0] );
+                option1.removeClass("active");
+                option2.removeClass("active");
+                option3.removeClass("active");
+                option4.removeClass("active");
+                switch (option) {
+                    case 1: 
+                        $rootScope.typeQuery = '';
+                        option1.addClass("active");
+                        break;
+                    case 2: 
+                        $rootScope.typeQuery = ' AND(type:"article")';
+                        option2.addClass("active");
+                        break;
+                    case 3:
+                        $rootScope.typeQuery = ' AND(type:"conference")';
+                        option3.addClass("active");
+                        break;
+                    default:
+                        $rootScope.typeQuery = ' NOT type:"Journal Article" NOT type:"Conference"';
+                        option4.addClass("active");
+                        break
+                }
+
+                $scope.searchSubmit();
+            }
+
+            $scope.searchSubmit = function() {
+
+                $scope.searchLoading = true;
+                $scope.facetLoading = true;
+                /*if ($routeParams.searchParam != undefined) {
+                    if ($routeParams.searchParam == "*") {
+                        $scope.query = '';
+                        q = '*';
+                        $scope.token='*';
+                    }
+                    else {
+                        if ($scope.query == $routeParams.searchParam) {
+                            $scope.token=$routeParams.searchParam;
+                        }
+                        
+                        $scope.query=$routeParams.searchParam;
+                        q = $scope.query;
+                    }
+                    $scope.searchPerformed = true;
+                }
+                else {
+                    if ($scope.query == '') {
+                        $scope.searchPerformed = false;
+                        $scope.token='*';
+                        q = '*';
+                    }
+                    else {
+                        $scope.token=$scope.query;
+                        q = $scope.query;
+                        $scope.searchPerformed = true;
+                    }
+                }*/
+		if ($routeParams.searchParam) {
+                    if ($scope.query != $routeParams.searchParam && $scope.query != '') {
+                        $location.path("/search/"+$scope.query+'/0');
+                    }
+                    else {
+                        $scope.query = $routeParams.searchParam;
+                        $scope.token = $scope.query;
+                        q = $scope.query;   
+                    }
+                }
+                if ($scope.query == '') {
+                    $scope.token = '*';
+                    q = '*';
+                }
+                else {
+                    $scope.token = $scope.query;
+                    q = $scope.query;
+                }
+                if ($routeParams.pageParam != undefined) {
+                    
+                    $scope.currentPage = $routeParams.pageParam;
+                }
+                else {
+                    $scope.currentPage = 0;
+                }
+                ngMeta.setTitle('Search results', '| agScholar');
+                if ($routeParams.pageParam != undefined) {
+                    $rootScope.currentPage = parseInt($routeParams.pageParam);
+                }
+
+                //look for facets and/or page arguments
+                $scope.setSearchParameters();
+                
+                //re-populate Submission Date field values
+                $scope.populateDates();
+                
+                //set current URL for redirection during back click 
+                $rootScope.currentUrl = $location.path();
+                
+
+                //find current url parameters to pass unto the pagination buttons
+                $rootScope.currentUrlParams = '?';
+                for (i in Object.keys($location.search())) {
+                    $scope.currentUrlParams += Object.keys($location.search())[i]+'='+$location.search()[Object.keys($location.search())[i]]+'&';
+                }
+                $rootScope.currentUrlParams = encodeURI($scope.currentUrlParams.substring(0, $scope.currentUrlParams.length - 1));
+                
+                //$rootScope.dataType = $routeParams.dataParam;
+                $rootScope.dataType = 'active';
+
+                agrisApiCallFactory.getSearchData(q,$rootScope.currentPage, $rootScope.selectedFacets, $scope.facetLimit, $rootScope.arnQuery, $rootScope.typeQuery, $scope.sortByValues, '', $rootScope.dataType).then(function(data) {
+                   
+                   if (data == 'error') {
+                    //$scope.currentPage++;
+                        //$routeParams.pageParam=$scope.currentPage;
+                        
+                        //$scope.error=true;     
+                        //$scope.searchSubmit();
+                   }
+                   else {
+                       $scope.items = data.response.docs;
+                       $scope.total = data.response.numFound;
+                       $scope.pages = Array(Math.ceil($scope.total/10));
+                       $scope.fid = '';
+                       $scope.currentFacetPage = 0;
+                       $scope.pager = PagerService.GetPager($scope.items, $rootScope.currentPage);
+                       $scope.searchLoading = false;
+                       // if (data.facet_counts.facet_fields.length !=0) {
+                       // 		$scope.facetLoading = false;
+                       // }
+                       // else {
+
+                       // }
+                       // $scope.facetData = data.facet_counts.facet_fields;
+                    }
+
+                }, function(msg) {
+                    alert(msg);
+                });
+                
+                
+            }
+            
+
+        })
+
+        .controller("mainController", function($rootScope, $scope, $location,$routeParams,agrisApiCallFactory, $http, ngMeta) {
+            $scope.initParams = function() {
+                ngMeta.setTitle('agScholar');
+            	//check if a date-range query has been submitted through the URL
+            	if ($routeParams.submittedFrom!=undefined && $routeParams.submittedTo!=undefined) {
+            		if ( q == '*' ) {
+            			q = '';
+            		}
+            		$scope.yearFrom = $routeParams.submittedFrom;
+            		$scope.yearTo = $routeParams.submittedTo;
+            	}
+            	$scope.yearFrom="2013";
+                $rootScope.currentPage='0';
+                $scope.query = '';
+                $http.get('/agscholar/data/ring-agris-data.xml')
+                .success(function(data, status, headers, config) {
+                	var x2js = new X2JS();
+                	var jsonOutput = x2js.xml_str2json(data);
+                	$scope.ciardCenters = jsonOutput.INPUT_CENTERS.GILWD_ADMIN_INPUTCENTER;
+                })
+                .error(function(data, status, headers, config) {
+                	alert('error');
+                });
+
+                $http.get('/agscholar/data/language-codes-full.json')
+                .success(function(data, status, headers, config) {
+                    $scope.languages = data;
+                })
+                .error(function(data, status, headers, config) {
+                    alert('error');
+                });
+
+            }
+
+            $scope.startSearch = function() {
+                $location.path('/search/'+$scope.query);
+
+            }
+        })
+
+        .controller("itemController", function($rootScope, $scope, $routeParams, agrisApiCallFactory, ngMeta) {
+            agrisApiCallFactory.getItemData($routeParams.id).then(function(data) {
+
+                       $scope.itemData = data;
+                       pattern = /[A-Z][A-Z](\d{4})/g;
+                       match = pattern.exec($scope.itemData.ARN);
+                       result = parseInt(match[1]);
+                       if (result >= 1880 && result <= parseInt( new Date().getFullYear())) {
+                       		$scope.submissionDate = match[1]+"";
+                       }
+                       else {
+                       		$scope.submissionDate = "unclear";
+                       }
+                       ngMeta.setTitle($scope.itemData.title_eng[0],'agScholar');
+                       ngMeta.setTag("citation_title", $scope.itemData.title_eng[0]);
+                       keywords=' ';
+                       if ($scope.itemData.subject) {
+                            
+                            for ( i in $scope.itemData.subject) {
+                                keywords += $scope.itemData.subject[i]+',';
+                            }
+                       }
+                       if ($scope.itemData.subject) {
+                            
+                            for ( i in $scope.itemData.subject) {
+                                keywords += $scope.itemData.subject[i]+',';
+                            }
+                       }
+                            keywords = '['+keywords.substring(0,keywords.length - 1 ) + ']';    
+
+                       ngMeta.setTag("citation_keywords", keywords);
+                       // if ($scope.isNotUndefined(data.resource["dct:isPartOf"][0])) {
+                       //      $scope.partOfDoi = data.resource["dct:isPartOf"][0].value;
+                       //      if (data.resource["dct:isPartOf"][1]["bibo:Journal"]) {
+                       //      $scope.partOf = data.resource["dct:isPartOf"][1]["bibo:Journal"]["dct:title"].value;
+                       //      }
+                       //      else {
+                       //          if (data.resource["dct:isPartOf"][2]["bibo:Journal"]) {
+                       //              $scope.partOf = data.resource["dct:isPartOf"][2]["bibo:Journal"]["dct:title"].value;
+                       //          }
+                       //      }
+                       // }
+                       // else {
+                       //      $scope.partOf = data.resource["dct:isPartOf"]["bibo:Journal"]["dct:title"].value;
+                       // }
+                    }, function(msg) {
+                        alert (msg);
+                    });
+
+            $scope.isNotUndefined = function(itemField){
+                return ( itemField !== undefined );
+            }
+
+            
+        })
+        .controller('ModalController', function( $rootScope, $scope, close, agrisApiCallFactory, $routeParams) {
+        	agrisApiCallFactory.getSearchData('*',0, [], '-1', '', true, $rootScope.analyzedFacet, $routeParams.dataParam).then(function(data) {
+                   
+                   if (data == 'error') {
+                    //$scope.currentPage++;
+                        //$routeParams.pageParam=$scope.currentPage;
+                        
+                        //$scope.error=true;     
+                        //$scope.searchSubmit();
+                   }
+                   else {
+                       // for ( i in Object.keys(data.facet_counts.facet_fields) ) {
+                       // 		if (Object.keys(data.facet_counts.facet_fields)[i] == $rootScope.analyzedFacet) {
+                       // 			$scope.facetData = data.facet_counts.facet_fields[Object.keys(data.facet_counts.facet_fields)[i]];
+                       // 			break;
+                       // 		}
+                       		
+                       // }
+                       $scope.facetData = data.facet_counts.facet_fields[Object.keys(data.facet_counts.facet_fields)[0]];
+                       $scope.total = $scope.facetData.length;
+                       $scope.statsData = data.stats.stats_fields[Object.keys(data.facet_counts.facet_fields)[0]];
+                    }
+
+                }, function(msg) {
+                    alert(msg);
+                });
+
+			$scope.close = function(result) {
+			 	close(result, 500); // close, but give 500ms for bootstrap to animate
+			};
+ });

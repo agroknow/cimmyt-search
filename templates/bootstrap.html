@@ -1,0 +1,41 @@
+<div id="bootstrap">
+	<div class="row">
+	   
+	   <div class="search-options col-md-8 col-md-offset-2 vcenter text-center">
+		<img class="logo" src="../cimmyt/img/logo.svg"/><br/><h2>Open Access meta-search</h2>
+				<form class="search-field" ng-submit="startSearch()" name="searchForm">
+				    <div class="row search">
+				    	<div class="pills">
+
+				    	<h3>What are you looking for?</h3>
+				    	<div class="col-md-1"></div>
+				    	
+				    	<div class="col-md-2">
+				    		<input type="checkbox" name="type" id="type_publication" ng-change="unsetAllTypes()" ng-model="types.publications"/><label for="type_publication"><img src="img/doc.svg" alt="Publications"><br/>Publications</label>
+				    	</div>
+				    	<div class="col-md-2">
+				    		<input type="checkbox" name="type" id="type_image" ng-change="unsetAllTypes()" ng-model="types.photographs"/><label for="type_image"><img src="img/img.svg" alt="Photographs"><br/>Photographs</label>
+				    	</div>
+				    	<div class="col-md-2">
+				    		<input type="checkbox" name="type" id="type_video" ng-change="unsetAllTypes()" ng-model="types.videos"/><label for="type_video"><img src="img/video.svg" alt="Videos"><br/>Videos</label>
+				    	</div>
+				    	<div class="col-md-2">
+				    		<input type="checkbox" name="type" id="type_dataset" ng-change="unsetAllTypes()" ng-model="types.datasets"/><label for="type_dataset"><img src="img/data.svg" alt="Datasets & Software"><br/>Datasets & Software</label>
+				    	</div>
+				    	<div class="col-md-2">
+				    		<input type="checkbox" name="all" id="type_all" ng-change="setAllTypes()" ng-model="types.all" checked/><label for="type_all"><img width="60" src="img/all.svg" alt="All"><br/>All</label>
+				    	</div>
+				    	<div class="col-md-1"></div>
+				    	</div>
+				    	<div class="search-input">
+				    	<input type="text" class="input" placeholder="Type your keywords to start your search..." ng-model="$root.query" required/>
+				    	</div>
+				    	<button ng-disabled="searchForm.$invalid" class="btn btn-default btn-lg" type="submit">SEARCH</button>
+				    </div>
+				    	
+		    	</form>	
+		    	<div class="copyright">© {{date}} International Maize and Wheat Improvement Center (CIMMYT)</div>
+		</div>
+
+    </div>
+</div>
