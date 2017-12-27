@@ -2,7 +2,7 @@
 angular.module('HashBangURLs', []).config(['$locationProvider', function($location) {
 
 }]);
-angular.module("cimmytSearchApp", ['ngRoute', 'uiSwitch', 'angucomplete-alt', 'rzModule', 'ngScrollbars', 'ivh.treeview'])
+angular.module("cimmytSearchApp", ['ngRoute', 'uiSwitch', 'rzModule'])
     //search app routes
     .config(['$routeProvider', '$locationProvider',
         function($routeProvider, $locationProvider) {

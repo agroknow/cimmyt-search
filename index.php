@@ -25,13 +25,9 @@
     <script src="js/bootstrap.min.js"></script>
     <script src="js/angular.min.js"></script>
     <script src="js/angular-route.js"></script>
-    <script src="js/angular-ui-switch.min.js"></script>
     <script src="js/main.js"></script>
-    <script src="js/angucomplete.js"></script>
     <script src="js/ngMeta.min.js"></script>
     <script src="js/rzslider.min.js"></script>
     <script src="js/jquery.mCustomScrollbar.concat.min.js"></script>
-    <script src="js/scrollbars.min.js"></script>
-    <script src="js/select.js"></script>
 </body>
 </html>
