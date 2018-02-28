@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" ng-app="cimmytSearchApp">
+<html lang="en">
 
 
 <head>
@@ -17,8 +17,10 @@
 </head>
 
 <body>
-<div ng-controller="mainController" ng-init="initParams()" class=" main">
+<div id="cimmytApp">
+<div ng-controller="mainController" ng-init="initParams()" class="main">
 	   <div ng-view></div>
+</div>
 </div>
     <script src="js/underscore-min.js"></script>
     <script src="js/jquery.min.js"></script>

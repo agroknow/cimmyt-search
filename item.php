@@ -12,8 +12,15 @@
   <div class="wrapper-fluid item-page">
     <div class="container">
       <?php
+      //get API URL from conf file 
+      $conf = json_decode(file_get_contents('./conf.json'));
+
+      //get requested ID from URL
       $resource_id = basename(parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH));
-      $url = "http://166.78.156.63:8080/cimmyt/resource/".$resource_id."?format=json";
+
+      //construct API call
+      $url = $conf->base_url."/resource/".$resource_id."?format=json";
+
       $json = file_get_contents($url);
       $obj = json_decode($json);   
       $font_size = '3';
@@ -150,7 +157,7 @@
           for ($i = 0; $i <= $elementCount2 -1 ; $i++) {
 
            $detailed_collection_id = ($obj->results[1]->detailed->collection[$i]->id);
-           $url = "http://52.18.30.225/cimmyt/collection/".$detailed_collection_id."?format=json";
+           $url = $conf->base_url."/collection/".$detailed_collection_id."?format=json";
            $json2 = file_get_contents($url);
            $obj2 = json_decode($json2);     
            $collection_name = ($obj2->results[0]->object->title->value);

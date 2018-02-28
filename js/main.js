@@ -2,7 +2,7 @@
 angular.module('HashBangURLs', []).config(['$locationProvider', function($location) {
 
 }]);
-angular.module("cimmytSearchApp", ['ngRoute', 'uiSwitch', 'rzModule'])
+angular.module("cimmytSearchApp", ['ngRoute', 'rzModule'])
     //search app routes
     .config(['$routeProvider', '$locationProvider',
         function($routeProvider, $locationProvider) {
@@ -21,13 +21,32 @@ angular.module("cimmytSearchApp", ['ngRoute', 'uiSwitch', 'rzModule'])
                 .when('/', {
                     controller: 'mainController',
                     templateUrl: 'templates/bootstrap.html'
+                })
+                .when('/start', {
+                    controller: 'mainController',
+                    templateUrl: 'templates/bootstrap.html'
                 });
 
             $locationProvider.html5Mode(true).hashPrefix('!');
         }
     ])
+
+    //service for configuration file loading
+    .provider('configService', function () {
+        var options = {};
+        this.config = function (opt) {
+            angular.extend(options, opt);
+        };
+        this.$get = [function () {
+            if (!options) {
+                throw new Error('Config options must be configured');
+            }
+            return options;
+        }];
+    })
+
     //API invokation service 
-    .factory('agrisApiCallFactory', function($http) {
+    .factory('agrisApiCallFactory', function($http, configService) {
         var factory = {
 
             getSearchData: function(query, page, facets, limit, arnQuery, typeQuery, sortValues, fromDate, toDate) {
@@ -95,7 +114,7 @@ angular.module("cimmytSearchApp", ['ngRoute', 'uiSwitch', 'rzModule'])
                     dateQuery = '&from=1951&to=' + (new Date()).getFullYear();
                 }
 
-                fullQuery = "http://166.78.156.63:8080/cimmyt/search?" + queryString + "&page=" + page + "&format=json&" + typeQuery + facetParams + dateQuery;
+                fullQuery = configService.base_url+"/search?" + queryString + "&page=" + page + "&format=json&" + typeQuery + facetParams + dateQuery;
                 
                 //console.log(fullQuery);
 
@@ -643,3 +662,15 @@ angular.module("cimmytSearchApp", ['ngRoute', 'uiSwitch', 'rzModule'])
 
         }
     });
+
+angular.element(document).ready(function () {
+
+    $.get('./conf.json', function (configData) {
+
+        angular.module('cimmytSearchApp').config(['configServiceProvider', function (configServiceProvider) {
+            configServiceProvider.config(configData);
+        }]);
+
+        angular.bootstrap('#cimmytApp', ['cimmytSearchApp']);
+    });
+});
